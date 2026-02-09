@@ -1,0 +1,720 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Valentine</title>
+
+<style>
+  :root{
+    --card: rgba(255,255,255,.90);
+    --text: #111827;
+    --yes: #22c55e;
+    --no:  #ef4444;
+    --shadow: 0 18px 55px rgba(0,0,0,.25);
+    --radius: 22px;
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0;
+    min-height:100vh;
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    color: var(--text);
+    overflow:hidden;
+    background:#000;
+  }
+
+  /* =========================
+     BACKGROUND COLLAGE (FIXED)
+     ========================= */
+  .bg{
+    position:fixed;
+    inset:0;
+    z-index:0;
+    overflow:hidden;
+  }
+
+  /* blurred photos layer */
+  .bg .photos{
+    position:absolute;
+    inset:-2%;
+    filter: blur(6px) saturate(1.15) contrast(.95);
+    transform: scale(1.06);
+    opacity:.92;
+  }
+  .bg .photo{
+    position:absolute;
+    border-radius:22px;
+    overflow:hidden;
+    box-shadow: 0 18px 60px rgba(0,0,0,.35);
+    border: 1px solid rgba(255,255,255,.08);
+  }
+  .bg .photo img{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    display:block;
+  }
+
+  /* crisp stickers layer */
+  .bg .stickers{
+    position:absolute;
+    inset:0;
+    pointer-events:none;
+    opacity:.95;
+  }
+  .bg .st{
+    position:absolute;
+    filter: drop-shadow(0 14px 28px rgba(0,0,0,.35));
+    transform: rotate(var(--rot, 0deg));
+  }
+  .bg .st img{
+    width:100%;
+    height:100%;
+    object-fit:contain;
+    display:block;
+  }
+
+  /* dark overlay to keep text readable */
+  .bg::after{
+    content:"";
+    position:absolute;
+    inset:0;
+    background:
+      radial-gradient(circle at 50% 35%, rgba(255,255,255,.10), rgba(0,0,0,.55)),
+      linear-gradient(180deg, rgba(25,0,20,.45), rgba(0,0,0,.72));
+  }
+
+  /* ===== Desktop layout positions ===== */
+  .p1{ left: 4%;  top: 10%; width: 28vw; height: 34vh; }
+  .p2{ right: 4%; top: 8%;  width: 30vw; height: 36vh; }
+  .p3{ left: 6%;  bottom: 8%; width: 32vw; height: 36vh; }
+  .p4{ right: 6%; bottom: 7%; width: 28vw; height: 34vh; }
+  .p5{ left: 35%; top: 38%; width: 30vw; height: 34vh; }
+
+  .s1{ left: 8%;  top: 48%; width: 150px; height: 150px; --rot:-8deg; }
+  .s2{ right: 9%; top: 46%; width: 160px; height: 160px; --rot: 9deg; }
+  .s3{ left: 28%; top: 6%;  width: 140px; height: 140px; --rot:-6deg; }
+  .s4{ right: 28%; top: 6%; width: 140px; height: 140px; --rot: 7deg; }
+  .s5{ left: 44%; bottom: 2%; width: 160px; height: 160px; --rot: 0deg; }
+
+  /* ===== Mobile adjustments (so it "fits" nicely) ===== */
+  @media (max-width: 520px){
+    .p1{ left: 3%;  top: 8%;  width: 48vw; height: 26vh; }
+    .p2{ right: 3%; top: 8%;  width: 48vw; height: 26vh; }
+    .p3{ left: 3%;  bottom: 10%; width: 46vw; height: 26vh; }
+    .p4{ right: 3%; bottom: 10%; width: 46vw; height: 26vh; }
+    .p5{ left: 18%; top: 38%; width: 64vw; height: 30vh; }
+
+    .s1{ left: 6%;  top: 44%; width: 110px; height: 110px; }
+    .s2{ right: 6%; top: 44%; width: 115px; height: 115px; }
+    .s3{ left: 8%;  top: 0.5%; width: 105px; height: 105px; }
+    .s4{ right: 8%; top: 0.5%; width: 105px; height: 105px; }
+    .s5{ left: 33%; bottom: 0.5%; width: 120px; height: 120px; }
+  }
+
+  /* =========================
+     POPUP (really / oh noo)
+     ========================= */
+  .popup{
+    position:fixed;
+    inset:0;
+    z-index:99999;
+    display:none;
+    place-items:center;
+    pointer-events:none;
+    background: rgba(0,0,0,.20);
+    backdrop-filter: blur(2px);
+  }
+  .popup.show{ display:grid; }
+  .popup img{
+    width:min(220px, 62vw);     /* ✅ smaller */
+    max-height:55vh;
+    object-fit:contain;
+    border-radius:18px;
+    box-shadow: 0 22px 70px rgba(0,0,0,.45);
+    opacity:0;
+    transform: translateY(10px) scale(.96);
+    transition: opacity .18s ease, transform .18s ease;
+    border: 1px solid rgba(255,255,255,.25);
+    background: rgba(255,255,255,.06);
+  }
+  .popup.show img{
+    opacity:1;
+    transform: translateY(0) scale(1);
+  }
+  .popup.fadeout img{
+    opacity:0;
+    transform: translateY(12px) scale(.985);
+  }
+
+  /* =========================
+     MOVING HEART GAME
+     ========================= */
+  .heart{
+    position:fixed;
+    left:50vw;
+    top:50vh;
+    transform: translate(-50%,-50%);
+    font-size: 62px;
+    cursor:pointer;
+    user-select:none;
+    z-index:9999;
+    pointer-events:auto;
+    filter: drop-shadow(0 12px 22px rgba(0,0,0,.25));
+    transition: transform .12s ease;
+  }
+  .heart:active{ transform: translate(-50%,-50%) scale(.92); }
+
+  /* =========================
+     MAIN CARD
+     ========================= */
+  .wrap{
+    position:relative;
+    z-index:2;
+    min-height:100vh;
+    display:grid;
+    place-items:center;
+    padding:18px;
+  }
+  .card{
+    width:min(560px, 92vw);
+    background: var(--card);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 22px 18px;
+    text-align:center;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,.35);
+    position:relative;
+  }
+  .title{
+    margin:6px 0 6px;
+    font-size: clamp(22px, 4vw, 32px);
+    letter-spacing:.2px;
+  }
+  .sub{
+    margin:0 0 12px;
+    opacity:.85;
+    font-size: 15px;
+  }
+  .badge{
+    display:inline-flex;
+    gap:8px;
+    align-items:center;
+    justify-content:center;
+    padding:8px 12px;
+    border-radius:999px;
+    background: rgba(255,255,255,.75);
+    border: 1px solid rgba(0,0,0,.06);
+    font-weight:900;
+    margin-top: 6px;
+  }
+  .badge b{ font-size: 16px; }
+  .hint{ margin-top:10px; opacity:.8; font-size: 13px; }
+  .gameInfo.hide{ display:none; }
+
+  .panel{
+    margin-top:14px;
+    display:none;
+    animation: pop .25s ease;
+    overflow: visible;
+    position:relative;
+    z-index:5;
+  }
+  .panel.show{ display:block; }
+  @keyframes pop{
+    from{ transform: scale(.97); opacity:.3; }
+    to{ transform: scale(1); opacity:1; }
+  }
+
+  .headline{
+    margin: 10px 0 0;
+    font-size: clamp(30px, 6vw, 46px);
+    letter-spacing:.2px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    line-height:1.05;
+  }
+  .headline .sparkHeart{ font-size: 40px; transform: translateY(2px); }
+
+  .questionSame{
+    margin: 10px 0 0;
+    font-size: clamp(30px, 6vw, 46px);
+    letter-spacing:.2px;
+    line-height:1.05;
+    position:relative;
+    z-index:40;
+  }
+
+  .btns{
+    margin-top:14px;
+    display:flex;
+    justify-content:center;
+    gap:12px;
+    align-items:center;
+    position:relative;
+    height:72px;
+    z-index:10;
+  }
+  button{
+    border:0;
+    padding:12px 18px;
+    border-radius:14px;
+    font-weight:900;
+    font-size:16px;
+    cursor:pointer;
+    box-shadow: 0 10px 25px rgba(0,0,0,.18);
+    transition: transform .25s ease, opacity .25s ease, filter .15s ease;
+    position:relative;
+    user-select:none;
+    white-space:nowrap;
+  }
+  button:hover{ filter: brightness(1.05); }
+  #yesBtn{ background: var(--yes); color:#fff; z-index:20; transform: scale(1); }
+  #noBtn { background: var(--no);  color:#fff; z-index:19; transform: scale(1); }
+
+  .toast{
+    display:none;
+    margin-top:22px;
+    padding:10px 12px;
+    border-radius:14px;
+    background: rgba(255,255,255,.90);
+    border:1px solid rgba(0,0,0,.06);
+    font-size: 14px;
+    font-weight:800;
+    opacity:.98;
+    position:relative;
+    z-index:60;
+  }
+  .toast.show{ display:block; }
+
+  .final-no-message{
+    display:none;
+    margin-top:10px;
+    padding:10px 12px;
+    border-radius:14px;
+    background: rgba(17,24,39,.92);
+    color:#fff;
+    font-weight:900;
+    letter-spacing:.2px;
+    box-shadow: 0 12px 30px rgba(0,0,0,.22);
+    animation: pop .25s ease;
+    position:relative;
+    z-index:60;
+  }
+  .final-no-message.show{ display:block; }
+
+  /* =========================
+     ENVELOPE + LETTER
+     ========================= */
+  .scene{
+    display:none;
+    margin-top: 14px;
+    padding-bottom: 20px;
+    animation: pop .25s ease;
+  }
+  .scene.show{ display:block; }
+
+  .envelope-wrap{
+    display:grid;
+    place-items:center;
+    margin-top: 8px;
+  }
+  .envelope{
+    width: 260px;
+    height: 170px;
+    position: relative;
+    filter: drop-shadow(0 18px 30px rgba(0,0,0,.25));
+    overflow: visible;
+    cursor:pointer;
+    user-select:none;
+  }
+  .env-back{
+    position:absolute;
+    inset:0;
+    background: #fef3c7;
+    border-radius: 16px;
+    border: 1px solid rgba(0,0,0,.08);
+  }
+  .env-front{
+    position:absolute;
+    inset:0;
+    border-radius: 16px;
+    pointer-events:none;
+  }
+  .tri-left, .tri-right, .tri-bottom{
+    position:absolute;
+    width:0;height:0;
+    border-style: solid;
+    opacity:.95;
+  }
+  .tri-left{
+    left:0; top:0;
+    border-width: 85px 0 85px 130px;
+    border-color: transparent transparent transparent #fde68a;
+  }
+  .tri-right{
+    right:0; top:0;
+    border-width: 85px 130px 85px 0;
+    border-color: transparent #fcd34d transparent transparent;
+  }
+  .tri-bottom{
+    left:0; bottom:-1px;
+    border-width: 0 130px 85px 130px;
+    border-color: transparent transparent #fbbf24 transparent;
+  }
+  .flap{
+    position:absolute;
+    left:0; top:0;
+    width:100%; height:100%;
+    transform-origin: top center;
+    transform: rotateX(0deg);
+    transition: transform .65s ease;
+    border-radius:16px;
+    pointer-events:none;
+  }
+  .flap::before{
+    content:"";
+    position:absolute;
+    left:0; top:0;
+    width:0;height:0;
+    border-style: solid;
+    border-width: 0 130px 95px 130px;
+    border-color: transparent transparent #f59e0b transparent;
+  }
+
+  /* Letter (hidden until envelope click) */
+  .letter{
+    display:none;
+    width:min(420px, 86vw);
+    margin: 12px auto 0;
+    animation: pop .25s ease;
+  }
+  .paper{
+    border-radius: 18px;
+    padding: 16px 16px 14px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.98), rgba(255,255,255,.92)),
+      radial-gradient(circle at 20% 20%, rgba(255,170,200,.18), rgba(0,0,0,0)),
+      radial-gradient(circle at 80% 30%, rgba(255,220,170,.16), rgba(0,0,0,0));
+    border: 1px solid rgba(0,0,0,.08);
+    box-shadow: 0 16px 40px rgba(0,0,0,.16);
+    position:relative;
+    overflow:hidden;
+  }
+  .paper::before{
+    content:"";
+    position:absolute;
+    inset:-40px;
+    background:
+      repeating-linear-gradient(135deg, rgba(255,110,160,.10) 0 10px, rgba(255,255,255,0) 10px 22px);
+    opacity:.45;
+    transform: rotate(-6deg);
+    pointer-events:none;
+  }
+  .paper h3{ margin:0 0 6px; font-size:16px; position:relative; z-index:1; }
+  .paper p{ margin:8px 0 0; font-size:14px; line-height:1.45; opacity:.92; position:relative; z-index:1; }
+  .sig{ margin-top:12px; font-weight:900; position:relative; z-index:1; }
+  .loveimg{
+    margin-top:12px;
+    width:100%;
+    border-radius: 14px;
+    border: 1px solid rgba(0,0,0,.08);
+    box-shadow: 0 10px 25px rgba(0,0,0,.12);
+    display:block;
+    position:relative;
+    z-index:1;
+  }
+  .mini{ margin-top:10px; font-size:13px; opacity:.8; }
+</style>
+</head>
+
+<body>
+  <!-- Background collage -->
+  <div class="bg" aria-hidden="true">
+    <div class="photos">
+      <div class="photo p1"><img src="images/muje1%20-%20Copy.jpeg" alt=""></div>
+      <div class="photo p2"><img src="images/muje2%20-%20Copy.jpeg" alt=""></div>
+      <div class="photo p3"><img src="images/muje3%20-%20Copy.jpeg" alt=""></div>
+      <div class="photo p4"><img src="images/muje4%20-%20Copy.jpeg" alt=""></div>
+      <div class="photo p5"><img src="images/muje5%20-%20Copy.jpeg" alt=""></div>
+    </div>
+
+    <div class="stickers">
+      <div class="st s1"><img src="images/sticker2%20-%20Copy.png" alt=""></div>
+      <div class="st s2"><img src="images/sticker1%20-%20Copy.jpg" alt=""></div>
+      <div class="st s3"><img src="images/sticker3%20-%20Copy.jpg" alt=""></div>
+      <div class="st s4"><img src="images/sticker4%20-%20Copy.jpg" alt=""></div>
+      <div class="st s5"><img src="images/sticker5%20-%20Copy.jpg" alt=""></div>
+    </div>
+  </div>
+
+  <!-- Popup images -->
+  <div class="popup" id="popup">
+    <img id="popupImg" alt="popup"/>
+  </div>
+
+  <!-- Moving heart -->
+  <div class="heart" id="heart" title="Catch me!">💘</div>
+
+  <div class="wrap">
+    <div class="card">
+
+      <!-- Catch info (will hide after 5/5) -->
+      <div class="gameInfo" id="gameInfo">
+        <div style="font-size:44px">🌹💌</div>
+        <div class="title">Catch the heart</div>
+        <div class="sub">Tap the moving heart <b>5</b> times to unlock.</div>
+        <div class="badge">Caught: <b id="count">0</b>/5</div>
+        <div class="hint">Tip: chase it 😄</div>
+      </div>
+
+      <!-- Question panel -->
+      <div class="panel" id="panel">
+        <div class="headline">
+          <span>You got my heart!</span>
+          <span class="sparkHeart">💖✨</span>
+        </div>
+        <div class="questionSame">Will you be my Valentine?</div>
+
+        <div class="btns" id="btnArea">
+          <button id="yesBtn">Yes 💖</button>
+          <button id="noBtn">No 🙈</button>
+        </div>
+
+        <div class="toast" id="toast"></div>
+        <div class="final-no-message" id="finalNoMsg">
+          Okay okay… 😈 Now you can only press <b>YES</b> 💖
+        </div>
+      </div>
+
+      <!-- Envelope/Letter scene -->
+      <div class="scene" id="scene">
+        <div style="font-size:44px">✉️</div>
+        <div class="title" style="margin-top:6px">A letter for you</div>
+        <div class="sub" style="margin-bottom:10px">Tap the envelope 💌</div>
+
+        <div class="envelope-wrap">
+          <div class="envelope" id="env">
+            <div class="env-back"></div>
+            <div class="env-front">
+              <div class="tri-left"></div>
+              <div class="tri-right"></div>
+              <div class="tri-bottom"></div>
+            </div>
+            <div class="flap" id="flap"></div>
+          </div>
+
+          <!-- Hidden until envelope click -->
+          <div class="letter" id="letter">
+            <div class="paper">
+              <h3>Dear you,</h3>
+              <p>
+                I’m really happy you opened this. 🌸<br>
+                I just wanted to say: you matter a lot to me,
+                and I’d love to share Valentine’s Day with you.
+              </p>
+              <p class="sig">— Yours 💖</p>
+              <img class="loveimg" src="images/love%20ya.jpeg" alt="love ya"/>
+            </div>
+          </div>
+
+          <div class="mini">Tap to open</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+<script>
+  /* =========================
+     HEART GAME (moving around)
+     ========================= */
+  const heart = document.getElementById("heart");
+  const countEl = document.getElementById("count");
+  const panel = document.getElementById("panel");
+  const gameInfo = document.getElementById("gameInfo");
+
+  const TOTAL = 5;
+  let caught = 0;
+  let timer = null;
+  let unlocked = false;
+
+  function moveHeart(){
+    const pad = 40;
+    const cx = innerWidth/2, cy = innerHeight/2;
+    let x, y;
+
+    // Try to avoid center (card area)
+    for(let i=0;i<30;i++){
+      x = pad + Math.random() * (innerWidth - pad*2);
+      y = pad + Math.random() * (innerHeight - pad*2);
+      if (Math.abs(x - cx) > 180 || Math.abs(y - cy) > 210) break;
+    }
+
+    heart.style.left = x + "px";
+    heart.style.top  = y + "px";
+  }
+
+  function startMoving(){
+    moveHeart();
+    timer = setInterval(moveHeart, 1500);
+  }
+  startMoving();
+
+  heart.addEventListener("click", () => {
+    if(unlocked) return;
+
+    caught++;
+    countEl.textContent = caught;
+
+    heart.style.transform = "translate(-50%,-50%) scale(1.10)";
+    setTimeout(()=> heart.style.transform = "translate(-50%,-50%)", 90);
+
+    moveHeart();
+
+    if(caught >= TOTAL){
+      unlocked = true;
+      clearInterval(timer);
+      heart.style.display = "none";
+      gameInfo.classList.add("hide");   // ✅ hide catch section
+      panel.classList.add("show");      // show question
+    }
+  });
+
+  window.addEventListener("resize", () => {
+    if(!unlocked) moveHeart();
+  });
+
+  /* =========================
+     POPUP images (1 second)
+     ========================= */
+  const popup = document.getElementById("popup");
+  const popupImg = document.getElementById("popupImg");
+  let popupBusy = false;
+
+  function showPopup(src, durationMs = 1000){
+    if(popupBusy) return;
+    popupBusy = true;
+
+    popup.classList.remove("fadeout");
+    popupImg.src = src;
+    popup.classList.add("show");
+
+    setTimeout(() => {
+      popup.classList.add("fadeout");
+      setTimeout(() => {
+        popup.classList.remove("show");
+        popup.classList.remove("fadeout");
+        popupBusy = false;
+      }, 200);
+    }, durationMs);
+  }
+
+  /* =========================
+     NO/YES logic (scale + lock)
+     ========================= */
+  const yesBtn  = document.getElementById("yesBtn");
+  const noBtn   = document.getElementById("noBtn");
+  const toast   = document.getElementById("toast");
+  const btnArea = document.getElementById("btnArea");
+  const finalNoMsg = document.getElementById("finalNoMsg");
+
+  let yesScale = 1, noScale = 1;
+  let lockedToYesOnly = false;
+  let noClicks = 0;
+
+  const noMessages = [
+    "Hmm… are you sure? 😏",
+    "No? really? 🥺",
+    "Okay okay… think again 😄",
+    "I’m still waiting for a YES 💖",
+    "You’re making YES bigger 👀",
+    "No is getting tiny 🙈",
+    "Last chance… 😈",
+    "Fine! Only YES now 💖"
+  ];
+
+  function showToast(msg){
+    toast.textContent = msg;
+    toast.classList.add("show");
+  }
+
+  function putNoFullyBehindYes(){
+    const yesRect  = yesBtn.getBoundingClientRect();
+    const areaRect = btnArea.getBoundingClientRect();
+
+    noBtn.style.position = "absolute";
+    noBtn.style.left = (yesRect.left - areaRect.left) + "px";
+    noBtn.style.top  = (yesRect.top  - areaRect.top ) + "px";
+    noBtn.style.zIndex = "1";
+    yesBtn.style.zIndex = "10";
+    noBtn.style.opacity = "0";
+    noBtn.style.pointerEvents = "none";
+
+    lockedToYesOnly = true;
+    finalNoMsg.classList.add("show");
+  }
+
+  noBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    if(lockedToYesOnly) return;
+
+    noClicks++;
+
+    // first two clicks show images (1 sec) — smaller size already in CSS
+    if(noClicks === 1){
+      showPopup("images/really.jpeg", 1000);
+    } else if(noClicks === 2){
+      showPopup("images/oh%20noo.jpeg", 1000);
+    }
+
+    showToast(noMessages[Math.min(noClicks, 8) - 1]);
+
+    // scale with cap to avoid covering text too much
+    yesScale = Math.min(2.05, yesScale + 0.14);
+    noScale  = Math.max(0.25, noScale - 0.16);
+
+    yesBtn.style.transform = `scale(${yesScale})`;
+    noBtn.style.transform  = `scale(${noScale})`;
+
+    if(noClicks >= 8) putNoFullyBehindYes();
+  });
+
+  /* =========================
+     YES -> Envelope scene
+     ========================= */
+  const scene = document.getElementById("scene");
+  const env   = document.getElementById("env");
+  const letter = document.getElementById("letter");
+  const flap = document.getElementById("flap");
+
+  let opened = false;
+
+  yesBtn.addEventListener("click", () => {
+    panel.classList.remove("show");
+    scene.classList.add("show");
+    letter.style.display = "none";  // ✅ ensure hidden
+    env.style.display = "block";
+    opened = false;
+    flap.style.transform = "rotateX(0deg)";
+  });
+
+  // ✅ Only when envelope clicked: open flap briefly, then remove envelope + show letter
+  env.addEventListener("click", () => {
+    if(opened) return;
+    opened = true;
+
+    flap.style.transform = "rotateX(160deg)";
+
+    setTimeout(() => {
+      env.style.display = "none";      // envelope disappears
+      letter.style.display = "block";  // only letter remains
+    }, 350);
+  });
+</script>
+</body>
+</html>
